@@ -4,39 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Mapa Cultural</title>
-  <!-- TailwindCSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
   <link href="https://fonts.cdnfonts.com/css/garet" rel="stylesheet"/>
   <style>
-    body {
-      font-family: 'Poppins', Arial, sans-serif;
-      background: #fff;
-      color: #222;
-      margin: 0;
-    }
+    body { font-family: 'Poppins', Arial, sans-serif; margin: 0; }
     .font-title { font-family: 'Garet', 'Poppins', Arial, sans-serif; }
-    .dropdown-menu { min-width: 200px; }
+    .dropdown-menu { min-width: 160px; max-width:210px;}
+    .dropdown-fade { transition: opacity 0.2s; }
     .infowindow-title {
       font-family: 'Garet', 'Poppins', Arial, sans-serif;
-      color: #5f5ff6;
-      font-size: 1.05rem;
-      font-weight: bold;
-      margin-bottom: 0.2em;
+      color: #5f5ff6; font-size: 1.05rem; font-weight: bold; margin-bottom: 0.2em;
     }
     .pac-container { z-index: 10000 !important; }
   </style>
 </head>
 <body class="bg-white text-[#222]">
 
-  <!-- Buscador avanzado -->
+  <!-- Buscador -->
   <div class="absolute top-5 left-1/2 z-50 transform -translate-x-1/2 w-[90vw] max-w-lg flex justify-center">
     <input id="search-bar"
       class="w-full px-4 py-2 rounded-full shadow border border-[#d8d8fd] focus:ring-2 focus:ring-[#5f5ff6] outline-none bg-white text-base"
       placeholder="Busca una ciudad o dirección..."
       autocomplete="off"
       aria-label="Buscar ciudad o dirección"
-      />
+    />
   </div>
 
   <!-- Mapa -->
@@ -46,14 +38,15 @@
   <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end">
     <div class="relative">
       <button id="dropdownBtn"
-        class="bg-white/95 shadow-lg rounded-full border border-[#d8d8fd] px-3 py-2 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#5f5ff6] text-[#5f5ff6] text-sm"
+        class="bg-white/95 shadow rounded-full border border-[#d8d8fd] px-2 py-1 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#5f5ff6] text-[#5f5ff6] text-xs"
         aria-haspopup="true" aria-expanded="false"
+        title="Mostrar/Ocultar capas"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="#5f5ff6" viewBox="0 0 24 24" stroke="#5f5ff6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="#5f5ff6" viewBox="0 0 24 24" stroke="#5f5ff6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         Capas
       </button>
       <div id="dropdownMenu"
-        class="dropdown-menu absolute bottom-11 right-0 min-w-[170px] bg-white/95 shadow-lg rounded-lg border border-[#d8d8fd] p-2 flex flex-col gap-1 text-sm transition-all duration-200 opacity-0 pointer-events-none"
+        class="dropdown-menu dropdown-fade absolute bottom-9 right-0 bg-white/95 shadow-lg rounded-lg border border-[#d8d8fd] p-2 flex flex-col gap-1 text-xs opacity-0 pointer-events-none"
         role="menu"
         aria-label="Capas del mapa"
       >
@@ -96,9 +89,8 @@
     </div>
   </div>
 
-  <!-- Status -->
   <div id="status"
-    class="pointer-events-none fixed top-20 left-1/2 transform -translate-x-1/2 bg-white text-[#222] px-4 py-2 rounded-full shadow border border-[#5f5ff6] z-50 text-sm hidden"></div>
+    class="pointer-events-none fixed top-20 left-1/2 transform -translate-x-1/2 bg-white text-[#222] px-4 py-2 rounded-full shadow border border-[#5f5ff6] z-50 text-xs hidden"></div>
 
   <script>
     // --- CONFIG ---
@@ -122,18 +114,10 @@
       }
     ];
     const SIM_BULK = [
-      {
-        coords: { lat: 41.5640, lng: 2.0113 },
-        name: "Granel Eco",
-        type: "Bulk Store"
-      }
+      { coords: { lat: 41.5640, lng: 2.0113 }, name: "Granel Eco", type: "Bulk Store" }
     ];
     const SIM_ACCESS = [
-      {
-        coords: { lat: 41.5640, lng: 2.0113 },
-        name: "Ruta Accesible 1",
-        difficulty: "Fácil"
-      }
+      { coords: { lat: 41.5640, lng: 2.0113 }, name: "Ruta Accesible 1", difficulty: "Fácil" }
     ];
 
     let map, userMarker;
@@ -143,7 +127,7 @@
       const el = document.getElementById("status");
       el.textContent = msg;
       el.classList.remove("hidden");
-      el.className = "pointer-events-none fixed top-20 left-1/2 transform -translate-x-1/2 bg-white text-[#222] px-4 py-2 rounded-full shadow border border-[#5f5ff6] z-50 text-sm";
+      el.className = "pointer-events-none fixed top-20 left-1/2 transform -translate-x-1/2 bg-white text-[#222] px-4 py-2 rounded-full shadow border border-[#5f5ff6] z-50 text-xs";
       if (type === "error") el.classList.add("border-red-500", "text-red-700");
       if (type === "success") el.classList.add("border-green-500", "text-green-700");
       setTimeout(() => el.classList.add("hidden"), 2200);
@@ -183,7 +167,6 @@
     }
 
     function setupLayerToggles() {
-      // Theme
       document.getElementById("toggle-light").onchange = function() {
         if (this.checked) {
           document.getElementById("toggle-dark").checked = false;
@@ -339,33 +322,32 @@
       });
     }
     function clearLayer(key) {
-      if (layers[key]) {
-        layers[key].forEach(obj => obj.setMap(null));
-        layers[key] = [];
-      }
+      if (layers[key]) { layers[key].forEach(obj => obj.setMap(null)); layers[key] = []; }
     }
 
-    // Dropdown desplegable
+    // Dropdown
     function setupDropdown() {
       const btn = document.getElementById("dropdownBtn");
       const menu = document.getElementById("dropdownMenu");
       btn.addEventListener("click", function(e) {
         e.stopPropagation();
-        const opened = menu.classList.toggle("opacity-0");
-        menu.classList.toggle("pointer-events-none");
-        menu.classList.toggle("opacity-100");
-        menu.classList.toggle("pointer-events-auto");
+        if (menu.classList.contains("opacity-0")) {
+          menu.classList.remove("opacity-0", "pointer-events-none");
+          menu.classList.add("opacity-100", "pointer-events-auto");
+        } else {
+          menu.classList.add("opacity-0", "pointer-events-none");
+          menu.classList.remove("opacity-100", "pointer-events-auto");
+        }
       });
       document.addEventListener("click", function() {
         menu.classList.add("opacity-0", "pointer-events-none");
         menu.classList.remove("opacity-100", "pointer-events-auto");
       });
       menu.addEventListener("click", e => e.stopPropagation());
-      // Animación inicial
       menu.classList.add("opacity-0", "pointer-events-none");
     }
 
-    // Buscador avanzado con autocompletar de ciudades
+    // Buscador con autocompletar Google Places
     function setupSearchBar() {
       const input = document.getElementById("search-bar");
       let autocomplete;
@@ -373,7 +355,6 @@
         if (!place.geometry) return;
         map.setCenter(place.geometry.location);
         map.setZoom(13);
-        // marcador temporal:
         if (window.searchMarker) window.searchMarker.setMap(null);
         window.searchMarker = new google.maps.Marker({
           position: place.geometry.location,
@@ -391,7 +372,7 @@
       }
       setTimeout(()=>{
         autocomplete = new google.maps.places.Autocomplete(input, {
-          types: ["(cities)"], // puedes poner geocode para direcciones generales
+          types: ["(cities)"],
           fields: ["geometry", "name", "formatted_address"]
         });
         autocomplete.addListener("place_changed", function() {
@@ -402,8 +383,6 @@
         input.addEventListener("keydown", function(e) {
           if (e.key === "Enter") {
             e.preventDefault();
-            // Si selecciona con enter, Autocomplete dispara place_changed
-            // Si escribe y da enter sin sugerencia, forzar búsqueda por texto
             const service = new google.maps.places.PlacesService(map);
             service.findPlaceFromQuery({
               query: input.value,
@@ -415,7 +394,7 @@
             });
           }
         });
-      }, 600);
+      }, 700);
     }
 
     // Carga Google Maps y Places
@@ -425,7 +404,6 @@
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=onReady`;
       script.async = true;
       window.onReady = function(){
-        // Centrar en la ubicación del usuario
         if ("geolocation" in navigator) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
