@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Vogaĝi – Cultural Map</title>
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.cdnfonts.com/css/garet" rel="stylesheet"/>
+  <style>
+    :root {
+      --color-primary: #5f5ff6;
+      --color-accent: #d8d8fd;
+      --color-text: #222222;
+      --color-bg: #ffffff;
+    }
+    body {
+      font-family: 'Poppins', Arial, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      margin: 0;
+    }
+    h1, .font-title {
+      font-family: 'Garet', 'Poppins', Arial, sans-serif;
+      letter-spacing: 0.01em;
+    }
+    .gm-style button:focus, .toggle-checkbox:focus + span {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+    .floating-layers label:focus-within {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+    .infowindow-title {
+      font-family: 'Garet', 'Poppins', Arial, sans-serif;
+      color: #5f5ff6;
+      font-size: 1.15rem;
+      font-weight: bold;
+      margin-bottom: 0.2em;
+    }
+  </style>
+</head>
+<body class="bg-white text-[#222]">
+
+  <!-- Header -->
+  <header class="fixed top-3 left-0 w-full z-40 flex justify-center pointer-events-none">
+    <h1 class="font-title text-xl sm:text-2xl text-[#5f5ff6] bg-white/85 px-4 py-2 rounded-full shadow pointer-events-auto">
+      Vogaĝi: Cultural Map
+    </h1>
+  </header>
+
+  <!-- Map -->
+  <div id="map" class="w-full h-screen"></div>
+
+  <!-- Floating Toggles -->
+  <div id="layer-toggles"
+    class="floating-layers fixed bottom-5 right-4 z-50 bg-white/95 shadow-lg rounded-xl p-3 flex flex-col gap-1 border border-[#d8d8fd]"
+    role="group"
+    aria-label="Map layer toggles"
+  >
+    <span class="font-title text-[#5f5ff6] text-base mb-2">Layers</span>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-light" class="toggle-checkbox accent-[#5f5ff6]" checked />
+      <span class="text-lg">🟢</span>
+      <span class="font-semibold text-sm">Normal</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-dark" class="toggle-checkbox accent-[#5f5ff6]" />
+      <span class="text-lg">🌑</span>
+      <span class="font-semibold text-sm">Dark</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-bike" class="toggle-checkbox accent-[#5f5ff6]" />
+      <span class="text-lg">🚲</span>
+      <span class="font-semibold text-sm">Bike lanes</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-aqi" class="toggle-checkbox accent-[#5f5ff6]" />
+      <span class="text-lg">🌫</span>
+      <span class="font-semibold text-sm">Air quality</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-shelter" class="toggle-checkbox accent-[#5f5ff6]" />
+      <span class="text-lg">☀️</span>
+      <span class="font-semibold text-sm">Climate shelters</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-bulk" class="toggle-checkbox accent-[#5f5ff6]" />
+      <span class="text-lg">🛒</span>
+      <span class="font-semibold text-sm">Bulk businesses</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded">
+      <input type="checkbox" id="toggle-accessible" class="toggle-checkbox accent-[#5f5ff6]" />
+      <span class="text-lg">♿</span>
+      <span class="font-semibold text-sm">Accessible</span>
+    </label>
+  </div>
+
+  <!-- Status/alerts -->
+  <div id="status"
+    class="pointer-events-none fixed top-20 left-1/2 transform -translate-x-1/2 bg-white text-[#222] px-4 py-2 rounded-full shadow border border-[#5f5ff6] z-50 text-sm hidden"></div>
+
+  <script>
+    // --- CONFIG ---
+    const GOOGLE_MAPS_API_KEY = "AIzaSyAgItM4AtJ_hYI8X92bXfAhCzYsfEH";
+    const TERRASSA_CENTER = { lat: 41.5640, lng: 2.0113 };
+    const MAP_STYLES = {
+      light: [
+        {"elementType":"geometry","stylers":[{"color":"#f5f5f5"}]}, {"elementType":"labels.icon","stylers":[{"visibility":"off"}]}, {"elementType":"labels.text.fill","stylers":[{"color":"#616161"}]}, {"elementType":"labels.text.stroke","stylers":[{"color":"#f5f5f5"}]}, {"featureType":"administrative.land_parcel","elementType":"labels.text.fill","stylers":[{"color":"#bdbdbd"}]}, {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#eeeeee"}]}, {"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]}, {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]}, {"featureType":"road.arterial","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]}, {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#dadada"}]}, {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#616161"}]}, {"featureType":"road.local","elementType":"labels.text.fill","stylers":[{"color":"#9e9e9e"}]}, {"featureType":"transit.line","elementType":"geometry","stylers":[{"color":"#e5e5e5"}]}, {"featureType":"transit.station","elementType":"geometry","stylers":[{"color":"#eeeeee"}]}, {"featureType":"water","elementType":"geometry","stylers":[{"color":"#c9c9c9"}]}, {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#9e9e9e"}]}
+      ],
+      dark: [
+        {"elementType":"geometry","stylers":[{"color":"#212121"}]}, {"elementType":"labels.icon","stylers":[{"visibility":"off"}]}, {"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]}, {"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]}, {"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]}, {"featureType":"administrative.country","elementType":"labels.text.fill","stylers":[{"color":"#9e9e9e"}]}, {"featureType":"administrative.land_parcel","stylers":[{"visibility":"off"}]}, {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#bdbdbd"}]}, {"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]}, {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#181818"}]}, {"featureType":"poi.park","elementType":"labels.text.fill","stylers":[{"color":"#616161"}]}, {"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]}, {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#8a8a8a"}]}, {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#373737"}]}, {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#3c3c3c"}]}, {"featureType":"road.highway.controlled_access","elementType":"geometry","stylers":[{"color":"#4e4e4e"}]}, {"featureType":"road.local","elementType":"labels.text.fill","stylers":[{"color":"#616161"}]}, {"featureType":"transit","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]}, {"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}, {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#3d3d3d"}]}
+      ]
+    };
+
+    // Simulated POIs and Bulk Businesses
+    const SIM_POIS = [
+      {
+        coords: { lat: 41.5642, lng: 2.0117 },
+        name: "Casa Alegre de Sagrera",
+        desc: "Modernist house-museum, hidden cultural gem.",
+        icon: "https://cdn.jsdelivr.net/gh/google/material-design-icons/maps/2x_web/ic_museum_black_48dp.png",
+        image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Casa_Alegre_de_Sagrera%2C_Terrassa_2016.jpg/320px-Casa_Alegre_de_Sagrera%2C_Terrassa_2016.jpg"
+      }
+    ];
+    const SIM_BULK = [
+      {
+        coords: { lat: 41.5640, lng: 2.0113 },
+        name: "Granel Eco",
+        type: "Bulk Store"
+      }
+    ];
+    const SIM_ACCESS = [
+      {
+        coords: { lat: 41.5640, lng: 2.0113 },
+        name: "Accessible Route 1",
+        difficulty: "Easy"
+      }
+    ];
+
+    // --- STATE ---
+    let map, userMarker;
+    let layers = {
+      bike: [],
+      aqi: [],
+      shelter: [],
+      bulk: [],
+      access: [],
+      pois: []
+    };
+
+    // --- STATUS UTILS ---
+    function showStatus(msg, type = "") {
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.classList.remove("hidden");
+      el.className = "pointer-events-none fixed top-20 left-1/2 transform -translate-x-1/2 bg-white text-[#222] px-4 py-2 rounded-full shadow border border-[#5f5ff6] z-50 text-sm";
+      if (type === "error") el.classList.add("border-red-500", "text-red-700");
+      if (type === "success") el.classList.add("border-green-500", "text-green-700");
+      setTimeout(() => el.classList.add("hidden"), 2200);
+    }
+
+    // --- MAP LOGIC ---
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: TERRASSA_CENTER,
+        zoom: 14,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true,
+        styles: MAP_STYLES.light
+      });
+
+      // Geolocate
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const { latitude, longitude } = pos.coords;
+            map.setCenter({ lat: latitude, lng: longitude });
+            userMarker = new google.maps.Marker({
+              position: { lat: latitude, lng: longitude },
+              map,
+              title: "Your Location",
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 9,
+                fillColor: "#5f5ff6",
+                fillOpacity: 1,
+                strokeColor: "#fff",
+                strokeWeight: 3
+              },
+              zIndex: 1000
+            });
+          },
+          () => {}
+        );
+      }
+
+      // Add POI Markers
+      addPOIMarkers();
+
+      // Set up toggles
+      setupLayerToggles();
+    }
+
+    // --- LAYER TOGGLE LOGIC ---
+    function setupLayerToggles() {
+      // Theme
+      document.getElementById("toggle-light").addEventListener("change", function() {
+        if (this.checked) {
+          document.getElementById("toggle-dark").checked = false;
+          map.setOptions({ styles: MAP_STYLES.light });
+          showStatus("☀️ Light style applied");
+        } else if (!document.getElementById("toggle-dark").checked) {
+          this.checked = true;
+        }
+      });
+      document.getElementById("toggle-dark").addEventListener("change", function() {
+        if (this.checked) {
+          document.getElementById("toggle-light").checked = false;
+          map.setOptions({ styles: MAP_STYLES.dark });
+          showStatus("🌙 Dark style applied");
+        } else if (!document.getElementById("toggle-light").checked) {
+          this.checked = true;
+        }
+      });
+
+      // Bike lanes
+      document.getElementById("toggle-bike").addEventListener("change", function() {
+        if (this.checked) enableBikeLanes();
+        else clearLayer("bike");
+      });
+
+      // AQI
+      document.getElementById("toggle-aqi").addEventListener("change", function() {
+        if (this.checked) enableAQILayer();
+        else clearLayer("aqi");
+      });
+
+      // Climate shelters
+      document.getElementById("toggle-shelter").addEventListener("change", function() {
+        if (this.checked) enableShelters();
+        else clearLayer("shelter");
+      });
+
+      // Bulk businesses
+      document.getElementById("toggle-bulk").addEventListener("change", function() {
+        if (this.checked) enableBulk();
+        else clearLayer("bulk");
+      });
+
+      // Accessible
+      document.getElementById("toggle-accessible").addEventListener("change", function() {
+        if (this.checked) enableAccessible();
+        else clearLayer("access");
+      });
+    }
+
+    // --- BIKE LANES from OSM Overpass ---
+    async function enableBikeLanes() {
+      showStatus("🚲 Loading bike lanes...");
+      clearLayer("bike");
+      const q = `
+        [out:json][timeout:10];
+        (
+          way(around:4000,${TERRASSA_CENTER.lat},${TERRASSA_CENTER.lng})[highway=cycleway];
+          way(around:4000,${TERRASSA_CENTER.lat},${TERRASSA_CENTER.lng})[cycleway];
+        );
+        out geom;
+      `;
+      const resp = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: q, headers: { "Content-Type": "text/plain" } });
+      const json = await resp.json();
+      if (!json.elements) { showStatus("❌ No bike lanes found", "error"); return; }
+      layers.bike = json.elements.filter(el => el.type === "way" && el.geometry)
+        .map(way => new google.maps.Polyline({
+          path: way.geometry.map(g => ({ lat: g.lat, lng: g.lon })),
+          map,
+          strokeColor: "#00C853",
+          strokeOpacity: 0.95,
+          strokeWeight: 4
+        }));
+      showStatus("🚲 Bike lanes enabled", "success");
+    }
+    // --- AQI LAYER from OpenAQ ---
+    async function enableAQILayer() {
+      showStatus("🌫 Loading air quality...");
+      clearLayer("aqi");
+      const url = `https://api.openaq.org/v2/latest?coordinates=${TERRASSA_CENTER.lat},${TERRASSA_CENTER.lng}&radius=5000&parameter=pm25&limit=3`;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      layers.aqi = (json.results || []).map(station => {
+        const aqi = Math.round(station.measurements[0]?.value || 0);
+        const status = aqi < 50 ? "Good" : aqi < 100 ? "Moderate" : "Unhealthy";
+        const color = aqi < 50 ? "#00C853" : aqi < 100 ? "#FF9800" : "#F44336";
+        const m = new google.maps.Marker({
+          position: { lat: station.coordinates.latitude, lng: station.coordinates.longitude },
+          map,
+          title: `AQI: ${aqi} (${status})`,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 2
+          }
+        });
+        const iw = new google.maps.InfoWindow({
+          content: `<div>
+            <div class="infowindow-title">${station.location}</div>
+            <div>AQI: <b>${aqi}</b> (${status})</div>
+          </div>`
+        });
+        m.addListener("click", () => iw.open(map, m));
+        return m;
+      });
+      showStatus("🌫 Air quality enabled", "success");
+    }
+    // --- CLIMATE SHELTERS from OSM (water fountains as demo) ---
+    async function enableShelters() {
+      showStatus("☀️ Loading climate shelters...");
+      clearLayer("shelter");
+      const q = `
+        [out:json][timeout:10];
+        (
+          node(around:4000,${TERRASSA_CENTER.lat},${TERRASSA_CENTER.lng})[amenity=drinking_water];
+        );
+        out body;
+      `;
+      const resp = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: q, headers: { "Content-Type": "text/plain" } });
+      const json = await resp.json();
+      layers.shelter = (json.elements || []).map(node => {
+        const m = new google.maps.Marker({
+          position: { lat: node.lat, lng: node.lon },
+          map,
+          title: "Water Fountain",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#2196F3",
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 2
+          }
+        });
+        const iw = new google.maps.InfoWindow({
+          content: `<div>
+            <div class="infowindow-title">Water Fountain</div>
+            <div>Drinking water</div>
+          </div>`
+        });
+        m.addListener("click", () => iw.open(map, m));
+        return m;
+      });
+      showStatus("☀️ Climate shelters enabled", "success");
+    }
+    // --- BULK BUSINESSES (Simulated) ---
+    function enableBulk() {
+      clearLayer("bulk");
+      layers.bulk = SIM_BULK.map(shop => {
+        const m = new google.maps.Marker({
+          position: shop.coords,
+          map,
+          title: shop.name,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: "#4CAF50",
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 2
+          }
+        });
+        const iw = new google.maps.InfoWindow({
+          content: `<div>
+            <div class="infowindow-title">${shop.name}</div>
+            <div>${shop.type}</div>
+          </div>`
+        });
+        m.addListener("click", () => iw.open(map, m));
+        return m;
+      });
+      showStatus("🛒 Bulk businesses enabled", "success");
+    }
+    // --- ACCESSIBLE ROUTES (Simulated) ---
+    function enableAccessible() {
+      clearLayer("access");
+      layers.access = SIM_ACCESS.map(route => {
+        const m = new google.maps.Marker({
+          position: route.coords,
+          map,
+          title: route.name,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: "#9C27B0",
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 2
+          }
+        });
+        const iw = new google.maps.InfoWindow({
+          content: `<div>
+            <div class="infowindow-title">${route.name}</div>
+            <div>Difficulty: ${route.difficulty}</div>
+          </div>`
+        });
+        m.addListener("click", () => iw.open(map, m));
+        return m;
+      });
+      showStatus("♿ Accessible itineraries enabled", "success");
+    }
+    // --- POIs (Simulated) ---
+    function addPOIMarkers() {
+      clearLayer("pois");
+      layers.pois = SIM_POIS.map(point => {
+        const m = new google.maps.Marker({
+          position: point.coords,
+          map,
+          title: point.name,
+          icon: point.icon
+        });
+        const iw = new google.maps.InfoWindow({
+          content: `
+            <div class="infowindow-title">${point.name}</div>
+            <div class="text-sm mb-2">${point.desc}</div>
+            ${point.image ? `<img src="${point.image}" alt="${point.name}" class="rounded w-32 my-1"/>` : ""}
+            <button onclick="alert('Coming soon!')" class="bg-[#5f5ff6] text-white rounded px-3 py-1 font-semibold text-xs mt-2">Add to cultural route</button>
+          `
+        });
+        m.addListener("click", () => iw.open(map, m));
+        return m;
+      });
+    }
+    // --- CLEAR LAYERS ---
+    function clearLayer(key) {
+      if (layers[key]) {
+        layers[key].forEach(obj => obj.setMap(null));
+        layers[key] = [];
+      }
+    }
+
+    // --- GOOGLE MAPS SCRIPT LOADER ---
+    function loadGoogleMaps() {
+      if (window.google && window.google.maps) return initMap();
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+      script.async = true;
+      window.initMap = initMap;
+      document.head.appendChild(script);
+    }
+    // --- INIT ---
+    window.addEventListener("DOMContentLoaded", loadGoogleMaps);
+  </script>
+</body>
+</html>
